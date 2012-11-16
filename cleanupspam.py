@@ -68,7 +68,10 @@ def getEntity(reqHandler, id):
 	return entity['entities'][prefixedId]
 
 def getDescriptions(entity):
-	return entity['descriptions']
+	if 'descriptions' in entity:
+		return entity['descriptions']
+	else:
+		return False
 
 def getRC(reqHandler):
 	params = {
@@ -77,7 +80,7 @@ def getRC(reqHandler):
 		'rcnamespace' : 0,
 		'rctype' : 'new',
 		'rcshow' : 'anon',
-		'rclimit' : 500,
+		'rclimit' : 20,
 		'rcprop' : 'title',
 	}
 	changes = reqHandler.get(params)
@@ -86,12 +89,18 @@ def getRC(reqHandler):
 	for change in changes['query']['recentchanges']:
 		entity = getEntity(reqHandler, change['title'])
 		descriptions = getDescriptions(entity)
-		if descriptions is not None:
+		if descriptions:
 			if 'en' in descriptions:
 				urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', descriptions['en']['value'])
-				if urls is not None:
+				if urls:
+					print "listing %s for deletion" % change['title']
 					pages.append(change['title'])
+				else:
+					print "skipping %s" % change['title']
+		else:
+			print "no description for %s" % change['title']
 
+	print "returning list of pages for processing"
 	return pages
 
 def deletePages(reqHandler, pages):
@@ -116,6 +125,7 @@ def main(*args):
 	}
 	rh = RequestHandler(config)
 	pages = getRC(rh)
+	print "%d pages for deletion" % len(pages)
 	deletePages(rh, pages)
 
 	print 'done'
